@@ -16,73 +16,85 @@ This repository contains the **Power BI portfolio** with included image placehol
 ## 🟥 Stock Insights (DOC & Stock Speed)  
 ![Stock](images/stock.png)
 
-stock speed algorithm
-CREATE OR REPLACE VIEW vw_stock_speed AS
-WITH stock_base AS (
-    SELECT
-        st.warehouse_id,
-        st.branch,
-        st.product_id,
-        st.quantity          AS on_hand_qty,
-        st.total_cost,
-        CASE 
-            WHEN st.quantity = 0 THEN NULL
-            ELSE st.total_cost::numeric / st.quantity
-        END                  AS unit_cost
-    FROM stocks st
-),
+## 📦 Stock Speed Algorithm
 
-sales_90d AS (
-    SELECT
-        si.product_id,
-        s.branch,
-        SUM(si.quantity)          AS sales_qty_90d,
-        MAX(s.sale_date)          AS last_sale_date
-    FROM sale_items si
-    JOIN sales s ON s.sale_id = si.sale_id
-    WHERE s.sale_date >= current_date - 90
-    GROUP BY si.product_id, s.branch
-)
+ส่วนนี้อธิบายวิธีคำนวณ **Stock Speed** เพื่อจัดกลุ่มสินค้าเป็น  
+`Fast`, `Medium`, `Slow`, `No Sales` จากยอดขายและจำนวนคงเหลือในสต็อก
 
-SELECT
-    sb.warehouse_id,
-    sb.branch,
-    sb.product_id,
-    sb.on_hand_qty,
-    COALESCE(s90.sales_qty_90d, 0) AS sales_qty_90d,
-    
-    -- Avg daily sales in last 90 days
-    CASE 
-        WHEN COALESCE(s90.sales_qty_90d, 0) = 0 THEN 0
-        ELSE COALESCE(s90.sales_qty_90d, 0)::numeric / 90.0
-    END AS avg_daily_sales_90d,
-
-    -- Days of cover = on hand / avg daily
-    CASE 
-        WHEN COALESCE(s90.sales_qty_90d, 0) = 0 THEN NULL
-        ELSE sb.on_hand_qty::numeric / (COALESCE(s90.sales_qty_90d, 0)::numeric / 90.0)
-    END AS days_of_cover,
-
-    -- Stock speed bucket
-    CASE
-        WHEN COALESCE(s90.sales_qty_90d, 0) = 0 THEN 'No Sales'
-        WHEN sb.on_hand_qty <= 0 THEN 'No Stock'
-        WHEN (sb.on_hand_qty::numeric / (COALESCE(s90.sales_qty_90d, 0)::numeric / 90.0)) <= 30 
-            THEN 'Fast'
-        WHEN (sb.on_hand_qty::numeric / (COALESCE(s90.sales_qty_90d, 0)::numeric / 90.0)) <= 90 
-            THEN 'Medium'
-        ELSE 'Slow'
-    END AS stock_speed,
-
-    s90.last_sale_date,
-    sb.unit_cost
-FROM stock_base sb
-LEFT JOIN sales_90d s90
-  ON s90.product_id = sb.product_id
- AND s90.branch     = sb.branch;
-
+ใช้สำหรับทำ ABC/XYZ แบบง่าย ๆ และสร้าง KPI เช่น  
+- สัดส่วนสินค้าค้างสต็อก (No Sales %)  
+- สัดส่วนสินค้าขายเร็ว (Fast %)  
+- Days of Cover (สต็อกพอขายได้อีกกี่วัน)
 
 ---
+
+### 1. Input Data
+
+ใช้ข้อมูลจาก 2 แหล่งหลัก
+
+1. `stocks`
+   - `branch`          – สาขา
+   - `product_id`      – รหัสสินค้า
+   - `quantity`        – จำนวนคงเหลือในสต็อก (On hand)
+   - `total_cost`      – มูลค่าต้นทุนรวม
+
+2. `sales + sale_items`
+   - `sale_date`       – วันที่ขาย
+   - `branch`          – สาขา
+   - `product_id`      – รหัสสินค้า
+   - `quantity`        – จำนวนที่ขาย
+
+---
+
+### 2. Metrics ที่คำนวณ
+
+#### 2.1 Sales 90 Days
+
+เราดูยอดขายย้อนหลัง **90 วันล่าสุด** ต่อ `branch, product_id`
+
+```sql
+sales_qty_90d = SUM(quantity in last 90 days)
+last_sale_date = MAX(sale_date in last 90 days)
+
+---
+2.2 Average Daily Sales (90 days)
+
+ค่าเฉลี่ยยอดขายต่อวันในช่วง 90 วัน
+
+avg_daily_sales_90d =
+    CASE
+        WHEN sales_qty_90d = 0 THEN 0
+        ELSE sales_qty_90d / 90.0
+    END
+2.3 Days of Cover
+
+จำนวน “วัน” ที่สต็อกปัจจุบันจะพอขายได้ ถ้ายอดขายเฉลี่ยยังเท่าเดิม
+
+days_of_cover =
+    CASE
+        WHEN sales_qty_90d = 0 THEN NULL      -- ไม่เคยขาย → ไม่มีค่า days_of_cover
+        ELSE on_hand_qty / avg_daily_sales_90d
+    END
+
+
+Interpretation:
+
+days_of_cover = 10 → สต็อกพอขายอีก 10 วัน
+
+days_of_cover = 45 → พอขาย 1.5 เดือน
+
+days_of_cover > 90 → สต็อกเยอะเมื่อเทียบกับยอดขาย
+
+3. การจัดกลุ่ม Stock Speed
+
+เรานิยาม stock_speed จาก sales_qty_90d และ days_of_cover ตามตารางนี้:
+
+Condition	stock_speed
+sales_qty_90d = 0	No Sales
+on_hand_qty <= 0	No Stock (optional)
+days_of_cover <= 30	Fast
+30 < days_of_cover <= 90	Medium
+days_of_cover > 90	Slow
 
 ## 📁 Project Structure
 ```
