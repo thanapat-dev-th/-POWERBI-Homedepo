@@ -53,7 +53,8 @@
 ควบคุมความเสี่ยงจากสต๊อก (Inventory Risk)  
 โดยประเมินความเร็วในการหมุนของสินค้าและความเพียงพอของสต๊อก  
 เพื่อป้องกันปัญหาเงินจมและสินค้าค้าง โดยใช้ stock speed indicator
-![Stock speed concept](/stock_speed.md)
+📦[Stock speed concept](/stock_speed.md)
+
 ---
 
 ## 📄 Page 5: Who is Customer (New & Churn)
@@ -72,7 +73,9 @@
 ### Concept
 วิเคราะห์คุณค่าของลูกค้าจากพฤติกรรมการซื้อจริง (RFM)  
 เพื่อจัดลำดับความสำคัญของลูกค้า  
-และเชื่อมโยงไปสู่กลยุทธ์ Retention และ Growth
+และเชื่อมโยงไปสู่กลยุทธ์ Retention และ Growth 
+โดยใช้ RFM Score and segmernt
+📦[RFM Score concept](/rfm_scoring.md)
 
 ---
 
