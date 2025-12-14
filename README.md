@@ -131,8 +131,7 @@ RFM เป็นการวิเคราะห์คุณค่าของ�
 - **New Customers**: ลูกค้าใหม่ที่เพิ่งเริ่มซื้อ
 - **At Risk**: ลูกค้าที่เริ่มห่างหาย
 - **Churned**: ลูกค้าที่หยุดซื้อไปแล้ว
-## 🔢 RFM Scoring (GitHub Version)
-
+## 🔢 RFM Scoring 
 ### Option A: Quantile Scoring (Recommended)
 ให้คะแนนโดยแบ่งลูกค้าออกเป็น 5 กลุ่มเท่า ๆ กัน (20% ต่อกลุ่ม) ตามแต่ละมิติ  
 ข้อดี: คะแนนบาลานซ์, เหมาะกับข้อมูลจริงที่กระจายไม่เท่ากัน
@@ -198,11 +197,40 @@ RFM เป็นการวิเคราะห์คุณค่าของ�
 
 ### Concept
 โฟกัส “ลูกค้าที่สร้างกำไรจริง”
+## 🏷️ RFM Segmentation (GitHub Version)
+
+### Concept
+แปลงคะแนน RFM (Recency, Frequency, Monetary)  
+ให้เป็นกลุ่มลูกค้าที่มีความหมายทางธุรกิจ  
+เพื่อใช้กำหนดกลยุทธ์ Retention, Reactivation และ Growth
+
+---
+### RFM Score Format
+- แต่ละมิติให้คะแนน 1–5
+- รวมเป็นรูปแบบ `R-F-M` (เช่น 5-5-5, 4-5-4)
+
+---
+### RFM Segments Definition
+
+#### 🏆 Champions
+- **R ≥ 4 AND F ≥ 4 AND M ≥ 4**
+- ลูกค้าคุณค่าสูง ซื้อบ่อย ใช้เงินสูง และเพิ่งซื้อ
+- กลยุทธ์: VIP, Early Access, Loyalty Reward
+
+---
+#### 💎 Loyal Customers
+- **F ≥ 4 AND M ≥ 3 AND R ≥ 3**
+- ลูกค้าซื้อซ้ำสม่ำเสมอ แต่ไม่จำเป็นต้องเพิ่งซื้อล่าสุด
+- กลยุทธ์: Subscription, Bundle, Cross-sell
+
+---
+#### 🌱 Potential Loyalists
+- **R ≥ 4 AND F = 2–3**
+- ลูกค้าที่เพิ่งซื้อ และมี
 
 ---
 
 # 📖 Business Storytelling
-
 Dashboard นี้ช่วยให้ธุรกิจมองเห็นทั้ง **ภาพรวม**, **ความเสี่ยง**, และ **โอกาสในการเติบโต**  
 โดยเชื่อมโยงข้อมูลจากหลายมุมมองเข้าด้วยกัน
 
