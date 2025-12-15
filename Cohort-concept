@@ -1,0 +1,232 @@
+# 📊 Cohort Analysis (Practical, Production-Ready)
+
+This repository documents a **clean, explainable cohort analysis model** designed for real BI usage (Power BI / SQL-first). It focuses on *customer lifecycle over time*, not just revenue trends.
+
+---
+
+## 🎯 What Problem This Solves
+
+Traditional YoY / MoM charts often hide *customer behavior*. Cohort analysis answers:
+
+* When customers first joined
+* How long they stayed active
+* How retention decays over time
+
+This model is optimized for:
+
+* Retention matrix (cohort heatmap)
+* Retained customers & retention %
+* Clean separation of **columns vs measures**
+
+---
+
+## 🧠 Cohort Concept (Business View)
+
+> **Cohort = customers who started in the same month**
+
+We track how many of them return in subsequent months.
+
+Visual form:
+
+| Cohort Month | M0  | M1  | M2  | M3  |
+| ------------ | --- | --- | --- | --- |
+| 2023-02      | 350 | 280 | 210 | 160 |
+| 2023-03      | 420 | 330 | 260 | 190 |
+
+Where:
+
+* Rows = cohort month (first purchase month)
+* Columns = months since cohort
+* Values = retained customers or retention %
+
+---
+
+## 🧱 Data Model Overview
+
+### 1️⃣ Dimension: Customers
+
+**Source:** `vw_dim_customers`
+
+Required fields:
+
+* `customer_id`
+* `first_purchase_date`
+* `cohort_month` = `date_trunc('month', first_purchase_date)`
+
+Each customer belongs to **exactly one cohort**.
+
+---
+
+### 2️⃣ Fact: Customer-Month Activity (Cohort Fact)
+
+**Source:** `vw_fact_customer_month_cohort`
+
+This is the most important table.
+
+Grain:
+
+> **1 row = 1 customer × 1 month**
+
+Fields:
+
+* `customer_id`
+* `sale_month`
+* `cohort_month`
+* `months_since_cohort`
+* `orders`
+* `revenue`
+* `profit`
+
+This avoids item-level noise and makes cohort math stable.
+
+---
+
+## 🧮 SQL: Customer-Month Fact (Recommended as VIEW)
+
+```sql
+CREATE OR REPLACE VIEW vw_fact_customer_month_cohort AS
+SELECT
+  f.customer_id,
+  date_trunc('month', f.sale_date)::date AS sale_month,
+  c.cohort_month,
+  (
+    (date_part('year', date_trunc('month', f.sale_date)) - date_part('year', c.cohort_month)) * 12
+    + (date_part('month', date_trunc('month', f.sale_date)) - date_part('month', c.cohort_month))
+  )::int AS months_since_cohort,
+  COUNT(DISTINCT f.sale_id) AS orders,
+  SUM(f.line_revenue) AS revenue,
+  SUM(f.line_profit)  AS profit
+FROM public.fact_sales f
+JOIN vw_dim_customers c
+  ON f.customer_id = c.customer_id
+GROUP BY 1,2,3,4;
+```
+
+Why **VIEW over TABLE**:
+
+* Always up to date
+* No refresh jobs
+* Logic stays centralized
+
+---
+
+## 🧠 Column vs Measure (Critical Rule)
+
+### ✅ Calculated Columns (SQL or Power BI)
+
+| Field               | Why                    |
+| ------------------- | ---------------------- |
+| cohort_month        | Fixed per customer     |
+| months_since_cohort | Per customer per month |
+
+These **must be columns**, not measures.
+
+---
+
+### 📐 Measures (Power BI)
+
+#### Cohort Size
+
+```DAX
+Cohort Size =
+CALCULATE(
+    DISTINCTCOUNT('vw_dim_customers'[customer_id])
+)
+```
+
+Counts customers in the cohort row.
+
+---
+
+#### Retained Customers
+
+```DAX
+Retained Customers =
+CALCULATE(
+    DISTINCTCOUNT('vw_fact_customer_month_cohort'[customer_id])
+)
+```
+
+Filtered naturally by:
+
+* Cohort Month (row)
+* Months Since Cohort (column)
+
+No TREATAS required if relationships are correct.
+
+---
+
+#### Retention %
+
+```DAX
+Retention % =
+DIVIDE([
+    Retained Customers
+], [Cohort Size])
+```
+
+---
+
+## 🔗 Power BI Relationships
+
+* `vw_dim_customers[customer_id]` → `vw_fact_customer_month_cohort[customer_id]`
+* Calendar → `sale_month`
+
+Single direction is sufficient.
+
+---
+
+## ❌ Common Mistakes (Avoid These)
+
+* ❌ Calculating months since cohort as a measure
+* ❌ Using item-level `fact_sales` for cohort math
+* ❌ Heavy use of `TREATAS` to fix modeling issues
+* ❌ Mixing calendar date with cohort logic
+
+---
+
+## 🧪 Validation Checklist
+
+* Month 0 retention = 100%
+* Retention never increases within same cohort
+* Older cohorts decay smoothly
+* New cohorts have fewer columns
+
+If all true → model is healthy.
+
+---
+
+## 📌 When to Extend
+
+You can safely add:
+
+* Revenue retention
+* Profit retention
+* Cohort by branch / segment
+
+Just extend the **customer-month fact**, not item-level sales.
+
+---
+
+## 🧭 Summary
+
+> Cohort analysis is about **customers × time**, not sales lines.
+
+This repo provides:
+
+* Clean concept
+* Stable SQL-first model
+* Simple DAX
+* BI-friendly structure
+
+Perfect for interviews, portfolios, and real dashboards.
+
+---
+
+If you want:
+
+* Diagram (ERD + flow)
+* Sample Power BI file
+* Interview explanation slide
+
+Just say the word.
